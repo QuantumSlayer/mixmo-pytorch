@@ -2,7 +2,8 @@
 Scheduler definitions and factory
 """
 
-from torch.optim.lr_scheduler import Counter, _LRScheduler
+import math
+from torch.optim.lr_scheduler import CosineAnnealingLR, Counter, _LRScheduler
 from mixmo.utils.logger import get_logger
 
 
@@ -28,9 +29,35 @@ class MultiGammaStepLR(_LRScheduler):
             for group in self.optimizer.param_groups
         ]
 
+class CosineAnnealingLR2(_LRScheduler):
+    """
+    Set the learning rate of each parameter group using a cosine annealing schedule
+    """
+
+    def __init__(self, optimizer, dict_milestone_to_gamma, last_epoch=-1):
+        self.milestones = Counter(dict_milestone_to_gamma.keys())
+        self.dict_milestone_to_gamma = dict_milestone_to_gamma
+        super(CosineAnnealingLR2, self).__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if self.last_epoch in self.milestones:
+            lr = self.dict_milestone_to_gamma[self.last_epoch]
+            LOGGER.warning(f"Set lr: {lr} at epoch: {self.last_epoch}")
+            return [lr]
+        else:
+            milestones = list(self.milestones.keys())
+            lower_index = next(x[0] for x in enumerate(milestones) if x[1] > self.last_epoch)
+            lower_epoch = milestones[lower_index - 1]
+            upper_epoch = milestones[lower_index]
+            lower = self.dict_milestone_to_gamma[lower_epoch]
+            upper = self.dict_milestone_to_gamma[upper_epoch]
+            lr = upper + (lower - upper) / 2 * (1 + math.cos(math.pi * (self.last_epoch - lower_epoch) / (upper_epoch - lower_epoch)))
+            LOGGER.info(f"Set lr: {lr} at epoch: {self.last_epoch}")
+            return [lr]
 
 SCHEDULERS = {
     "multigamma_step": MultiGammaStepLR,
+    "cosineannealing_step": CosineAnnealingLR2
 }
 
 

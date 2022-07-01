@@ -215,7 +215,7 @@ class MetricsWrapper:
             _, pred5 = probs.topk(5, 1, True, True)
             pred5 = pred5.t()
             correct5 = pred5.eq(target.view(1, -1).expand_as(pred5))
-            correct5 = correct5[:5].view(-1).float().sum(0, keepdim=True).detach().to("cpu").numpy()[0]
+            correct5 = correct5[:5].contiguous().view(-1).float().sum(0, keepdim=True).detach().to("cpu").numpy()[0]
             self.num_accurate_top5 += correct5
         if "tace" in self.metrics:
             self._list_np_probs.append(np_probs)
